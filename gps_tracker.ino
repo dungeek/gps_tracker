@@ -6,6 +6,9 @@
 
 #include <TinyGPSPlus.h>
 #include <BlynkSimpleEsp32.h>
+#include <WiFi.h>
+
+WiFiServer server(80);
 
 // The TinyGPSPlus object is used to store and parse GPS data.
 TinyGPSPlus gps;
@@ -28,18 +31,17 @@ void setup() {
   Serial.println();
   Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
   timer.setInterval(5000L, checkGPS); // Every 5s check if GPS is connected
-}
 
-void loop() {
-  while (Serial2.available() > 0)
-  {
-    if (gps.encode(Serial2.read())){
-      displayInfo();
-    }
+  // Connect to Wi-Fi
+  Serial.println("Connecting to WiFi");
+  WiFi.begin(ssid, pass);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
   }
-
-  Blynk.run();
-  timer.run();
+  Serial.println("Connected to WiFi");
+  // Start the server
+  server.begin();
 }
 
 void displayInfo() {
@@ -79,3 +81,42 @@ void checkGPS(){
     Blynk.virtualWrite(V4, "GPS ERROR");  
   }
 }
+
+void serverSendsData(){
+
+  WiFiClient client = server.available();
+  if (client) {
+    Serial.println("Client connected");
+
+    // Read GPS data
+    double latitude = gps.location.lat();
+    double longitude = gps.location.lng();
+
+    // Send GPS data to client
+    client.print("Latitude: ");
+    client.println(latitude, 6);
+    client.print("Longitude: ");
+    client.println(longitude, 6);
+
+    // Close the connection
+    client.stop();
+    Serial.println("Client disconnected");
+  }
+    delay(5000); // Wait for 5 seconds before the next connection attempt
+}
+
+void loop() {
+  while (Serial2.available() > 0)
+  {
+    if (gps.encode(Serial2.read())){
+      displayInfo();
+      // Check if client is available before sending data
+      if (server.hasClient()) {
+        serverSendsData();
+      }
+    }
+  }
+
+  Blynk.run();
+  timer.run();
+}xzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz

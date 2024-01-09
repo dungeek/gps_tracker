@@ -7,8 +7,12 @@
 #include <TinyGPSPlus.h>
 #include <BlynkSimpleEsp32.h>
 #include <WiFi.h>
+//#include <string.h>
+//#include <ESPAsyncWebSrv.h>
 
-WiFiServer server(80);
+// Create an instance of the ESPAsyncWebServer class
+//AsyncWebServer webServer(6969);
+WiFiServer tcpServer(9696);
 
 // The TinyGPSPlus object is used to store and parse GPS data.
 TinyGPSPlus gps;
@@ -20,9 +24,9 @@ const char *pass =  "12345678"; //Password
 BlynkTimer timer;
 float latitude;     //Storing the Latitude
 float longitude;    //Storing the Longitude
-float spd;       //Variable  to store the speed
-float sats;      //Variable to store no. of satellites response
-String bearing;  //Variable to store orientation or direction of GPS
+// float spd;       //Variable  to store the speed
+// float sats;      //Variable to store no. of satellites response
+// String bearing;  //Variable to store orientation or direction of GPS
 
 
 void setup() {
@@ -40,17 +44,26 @@ void setup() {
     Serial.println("Connecting to WiFi...");
   }
   Serial.println("Connected to WiFi");
-  // Start the server
-  server.begin();
+  
+  // Print ESP32 IP address
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+  
+  // Start the servers
+  tcpServer.begin();
+  //webServer.begin();
+}
+
+void readData () {
+  // Read GPS data
+  latitude = gps.location.lat();
+  longitude = gps.location.lng();
 }
 
 void displayInfo() {
   Serial.println(F("Location: "));
   if (gps.location.isValid()) 
   {
-    latitude = (gps.location.lat()); //Storing the Lat. and Lon. 
-    longitude = (gps.location.lng());
-
     Serial.print(F("Latitude: "));
     Serial.println(gps.location.lat(), 6);
     Serial.print(F("Longitude: "));
@@ -82,15 +95,11 @@ void checkGPS(){
   }
 }
 
-void serverSendsData(){
+void serverSendDataByTCP_IP(){
 
-  WiFiClient client = server.available();
+  WiFiClient client = tcpServer.available();
   if (client) {
     Serial.println("Client connected");
-
-    // Read GPS data
-    double latitude = gps.location.lat();
-    double longitude = gps.location.lng();
 
     // Send GPS data to client
     client.print("Latitude: ");
@@ -105,18 +114,34 @@ void serverSendsData(){
     delay(5000); // Wait for 5 seconds before the next connection attempt
 }
 
+// void directingToGoogleMap (){
+//     // Route to handle root url
+//   webServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+//     // Redirect to Google Maps with current GPS location
+//     //String url = "https://www.google.com/maps?q=" + String(gps.location.lat(), 6) + "," + String(gps.location.lng(), 6);
+//     String url = "https://www.google.com/maps?q=" + String(gps.location.lat(), 6) + "," + String(gps.location.lng(), 6);
+//     request->redirect(url.c_str());
+//   });
+// }
+
 void loop() {
   while (Serial2.available() > 0)
   {
     if (gps.encode(Serial2.read())){
+      readData();
       displayInfo();
       // Check if client is available before sending data
-      if (server.hasClient()) {
-        serverSendsData();
+      if (tcpServer.hasClient()) {
+        serverSendDataByTCP_IP();
+      };
+
+      //Display map
+      if(gps.location.isValid()){
       }
+      //directingToGoogleMap();
     }
   }
 
   Blynk.run();
   timer.run();
-}xzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+}

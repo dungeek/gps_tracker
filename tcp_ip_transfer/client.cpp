@@ -3,8 +3,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-const char* serverIP = "192.168.108.166";  // Replace with your ESP32's IP address
-const int serverPort = 80;
+const char* serverIP = "192.168.108.166";  // ESP32's IP address
+const int serverPort = 9696;
 
 int createSocket() {
     int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -39,6 +39,18 @@ void receiveData(int clientSocket) {
 
         buffer[bytesRead] = '\0';
         std::cout << "Received data: " << buffer << std::endl;
+
+        // Parse latitude and longitude from the received data
+        float latitude, longitude;
+        if (sscanf(buffer, "Latitude: %f Longitude: %f", &latitude, &longitude) == 2) {
+            // Open Google Maps in the web browser (adjust for your system)
+            std::string googleMapsUrl = "https://www.google.com/maps?q=" + std::to_string(latitude) + "," + std::to_string(longitude);
+            std::string command = "xdg-open \"" + googleMapsUrl + "\"";  // Adjust for your system (xdg-open is for Linux)
+            system(command.c_str());
+        }
+
+        // Add a delay to avoid continuous rapid requests
+        usleep(500000);  // Sleep for 500 milliseconds
     }
 }
 
